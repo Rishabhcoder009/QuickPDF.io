@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<title>Quick PDF Desktop</title>
+<script src='https://unpkg.com/pdf-lib/dist/pdf-lib.min.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'></script>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#111}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#fff}
+body{margin:0;font-family:Arial;background:var(--bg);color:var(--text)}
+header{background:#e50914;color:#fff;padding:15px;text-align:center;position:relative}
+.logo{font-size:30px;font-weight:800}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:25px;padding:50px;max-width:1200px;margin:auto}
+.card{background:var(--card);padding:35px;border-radius:18px;text-align:center;cursor:pointer;box-shadow:0 8px 25px rgba(0,0,0,.08);transition:.3s}
+.card:hover{transform:translateY(-8px)}
+.icon{font-size:42px;margin-bottom:15px}
+#toolArea{max-width:900px;margin:30px auto;background:var(--card);padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.1)}
+button{padding:10px 15px;border:none;background:#0078d7;color:#fff;border-radius:6px;cursor:pointer;margin:5px}
+.darkBtn{position:absolute;right:20px;top:20px}
+</style>
+</head>
+<body>
+<header>
+<div class='logo'>⚡ Quick PDF</div>
+<button class='darkBtn' onclick="document.body.classList.toggle('dark')">🌙</button>
+</header>
+
+<!-- TOOL BOXES -->
+<div class='tools'>
+<div class='card' onclick="showTool('merge')"><div class='icon'>🧩</div>Merge PDF</div>
+<div class='card' onclick="showTool('split')"><div class='icon'>✂️</div>Split PDF</div>
+<div class='card' onclick="showTool('rotate')"><div class='icon'>🔄</div>Rotate PDF</div>
+<div class='card' onclick="showTool('watermark')"><div class='icon'>💧</div>Watermark PDF</div>
+<div class='card' onclick="showTool('protect')"><div class='icon'>🔒</div>Protect PDF</div>
+<div class='card' onclick="showTool('pdf2img')"><div class='icon'>📸</div>PDF → Images</div>
+</div>
+
+<div id='toolArea'></div>
+
+<script>
+const toolArea=document.getElementById('toolArea');
+function showTool(t){
+const ui={
+merge:`<h2>Merge PDFs</h2><input type=file id=files multiple><br><button onclick=mergePDFs()>Merge</button>`,
+split:`<h2>Split PDF</h2><input type=file id=file><br><button onclick=splitPDF()>Split</button>`,
+rotate:`<h2>Rotate PDF</h2><input type=file id=file><br><button onclick=rotatePDF()>Rotate</button>`,
+watermark:`<h2>Add Watermark</h2><input type=file id=file><br><button onclick=watermarkPDF()>Apply</button>`,
+protect:`<h2>Protect PDF</h2><input type=file id=file><br><button onclick=protectPDF()>Protect</button>`,
+pdf2img:`<h2>PDF → Images</h2><input type=file id=file><div id=out></div><button onclick=pdf2img()>Convert</button>`
+};
+toolArea.innerHTML=ui[t];}
+
+function download(bytes,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes]));a.download=name;a.click();}
+
+async function mergePDFs(){const files=document.getElementById('files').files;const merged=await PDFLib.PDFDocument.create();for(const f of files){const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());const pages=await merged.copyPages(pdf,pdf.getPageIndices());pages.forEach(p=>merged.addPage(p));}download(await merged.save(),'merged.pdf');}
+
+async function splitPDF(){const f=document.getElementById('file').files[0];const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());for(let i=0;i<pdf.getPageCount();i++){const n=await PDFLib.PDFDocument.create();const [p]=await n.copyPages(pdf,[i]);n.addPage(p);download(await n.save(),`page${i+1}.pdf`);}}
+
+async function rotatePDF(){const f=document.getElementById('file').files[0];const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());pdf.getPages().forEach(p=>p.setRotation(PDFLib.degrees(90)));download(await pdf.save(),'rotated.pdf');}
+
+async function watermarkPDF(){const f=document.getElementById('file').files[0];const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);pdf.getPages().forEach(p=>{const{width,height}=p.getSize();p.drawText('Quick PDF',{x:width/3,y:height/2,size:40,font,rotate:PDFLib.degrees(-45),opacity:.4});});download(await pdf.save(),'watermark.pdf');}
+
+async function protectPDF(){const f=document.getElementById('file').files[0];const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());const pwd=prompt('Enter password');download(await pdf.save({userPassword:pwd}),'protected.pdf');}
+
+async function pdf2img(){const f=document.getElementById('file').files[0];const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;const out=document.getElementById('out');out.innerHTML='';for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const v=p.getViewport({scale:1});const c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;out.appendChild(c);}}
+</script>
+
+</body>
+</html>
