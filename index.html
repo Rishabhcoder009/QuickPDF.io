@@ -2,191 +2,138 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Quick PDF</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- Libraries -->
-<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<title>Text Converter</title>
 
 <style>
-:root{
-  --bg:#f4f6fb;
-  --card:#ffffff;
-  --text:#111;
-}
-.dark{
-  --bg:#0f172a;
-  --card:#1e293b;
-  --text:#fff;
-}
-body{
-  margin:0;
-  font-family:Arial,Helvetica,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
-  background:#e50914;
-  color:#fff;
-  padding:15px;
-  text-align:center;
-  position:relative;
-}
-.logo{
-  font-size:26px;
-  font-weight:800;
-}
+  * {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+  }
 
-/* Theme button FIXED */
-.darkBtn{
-  position:absolute;
-  right:12px;
-  top:12px;
-  padding:8px 12px;
-  border:none;
-  border-radius:8px;
-  background:#00000033;
-  color:#fff;
-  cursor:pointer;
-  width:auto;
-}
+  body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f2f2f2;
+  }
 
-.tools{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:15px;
-  padding:20px;
-  max-width:1200px;
-  margin:auto;
-}
-.card{
-  background:var(--card);
-  padding:20px;
-  border-radius:14px;
-  text-align:center;
-  cursor:pointer;
-  box-shadow:0 6px 20px rgba(0,0,0,.1);
-  transition:.3s;
-}
-.card:hover{transform:translateY(-4px)}
-.icon{font-size:36px;margin-bottom:8px}
+  .container {
+    background: #fff;
+    width: 350px;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center;
+  }
 
-#toolArea{
-  max-width:900px;
-  margin:20px auto;
-  background:var(--card);
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.15);
-}
+  h2 {
+    margin-bottom: 15px;
+  }
 
-button,input,select{
-  width:100%;
-  padding:12px;
-  margin:6px 0;
-  font-size:16px;
-  border-radius:6px;
-  border:none;
-}
-button{
-  background:#0078d7;
-  color:white;
-  cursor:pointer;
-}
-canvas{
-  width:100%;
-  max-width:500px;
-  display:block;
-  margin:15px auto;
-  border-radius:10px;
-  box-shadow:0 6px 20px rgba(0,0,0,.2);
-}
+  textarea {
+    width: 100%;
+    height: 120px;
+    padding: 10px;
+    resize: none;
+    margin-bottom: 10px;
+  }
+
+  select, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+
+  button {
+    background: black;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  button:hover {
+    background: #333;
+  }
+
+  .msg {
+    margin-top: 15px;
+    font-size: 14px;
+    color: green;
+  }
 </style>
 </head>
 
 <body>
 
-<header>
-  <div class="logo">⚡ Quick PDF</div>
-  <button class="darkBtn" onclick="document.body.classList.toggle('dark')">🌙</button>
-</header>
+<div class="container">
+  <h2>Text Converter</h2>
 
-<div class="tools">
-  <div class="card" onclick="showTool('merge')"><div class="icon">🧩</div>Merge PDF</div>
-  <div class="card" onclick="showTool('split')"><div class="icon">✂️</div>Split PDF</div>
-  <div class="card" onclick="showTool('watermark')"><div class="icon">💧</div>Watermark</div>
-  <div class="card" onclick="showTool('pdf2word')"><div class="icon">📄</div>PDF → Word</div>
-  <div class="card" onclick="showTool('word2pdf')"><div class="icon">📝</div>Word → PDF</div>
+  <textarea id="textInput" placeholder="Paste your text here..."></textarea>
+
+  <select id="convertType">
+    <option value="">Select Conversion</option>
+    <option value="textToPdf">Text → PDF</option>
+    <option value="textToWord">Text → Word</option>
+  </select>
+
+  <!-- MAIN BUTTON -->
+  <button id="convertBtn">Convert</button>
+
+  <div class="msg" id="message"></div>
 </div>
 
-<div id="toolArea"></div>
-
 <script>
-const toolArea=document.getElementById("toolArea");
+  document.getElementById("convertBtn").addEventListener("click", function () {
 
-/* UI */
-function showTool(t){
-const ui={
-merge:`
-<h2>Merge PDFs</h2>
-<input type=file id=files multiple accept="application/pdf">
-<button onclick=mergePDFs()>Merge</button>`,
+    const text = document.getElementById("textInput").value.trim();
+    const type = document.getElementById("convertType").value;
+    const msg = document.getElementById("message");
 
-split:`
-<h2>Split PDF</h2>
-<input type=file id=file accept="application/pdf">
-<button onclick=splitPDF()>Split</button>`,
+    if (!text) {
+      msg.style.color = "red";
+      msg.innerText = "❌ Please enter some text";
+      return;
+    }
 
-watermark:`
-<h2>Watermark PDF</h2>
-<input type=file id=file accept="application/pdf">
-<input id=wmText placeholder="Watermark text">
-<select id=wmPos>
-<option value="center" selected>Center</option>
-<option value="top-left">Top Left</option>
-<option value="top-right">Top Right</option>
-<option value="bottom-left">Bottom Left</option>
-<option value="bottom-right">Bottom Right</option>
-</select>
-<label>Font Size</label>
-<input type=range id=wmSize min=12 max=80 value=36>
-<label>Opacity</label>
-<input type=range id=wmOpacity min=0.1 max=1 step=0.1 value=0.4>
-<button onclick=applyWatermark()>Download PDF</button>`,
+    if (!type) {
+      msg.style.color = "red";
+      msg.innerText = "❌ Please select conversion type";
+      return;
+    }
 
-pdf2word:`
-<h2>PDF → Word (Text Only)</h2>
-<input type=file id=pdfFile accept="application/pdf">
-<button onclick=pdfToWord()>Convert</button>`,
+    if (type === "textToWord") {
+      const blob = new Blob([text], { type: "application/msword" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "converted.doc";
+      link.click();
 
-word2pdf:`
-<h2>Word → PDF (Text Only)</h2>
-<input type=file id=txtFile accept=".txt">
-<button onclick=wordToPDF()>Convert</button>`
-};
-toolArea.innerHTML=ui[t];
-}
+      msg.style.color = "green";
+      msg.innerText = "✅ Word file downloaded";
 
-/* Download helper */
-function download(bytes,name,type="application/pdf"){
-const blob=new Blob([bytes],{type});
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;a.download=name;a.click();
-}
+    } else if (type === "textToPdf") {
+      const pdfContent = `
+        <html>
+          <body>
+            <pre>${text}</pre>
+          </body>
+        </html>
+      `;
 
-/* Merge */
-async function mergePDFs(){
-const files=document.getElementById("files").files;
-const merged=await PDFLib.PDFDocument.create();
-for(const f of files){
-const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
-const pages=await merged.copyPages(pdf,pdf.getPageIndices());
-pages.forEach(p=>merged.addPage(p));
-}
-download(await merged.save(),"merged.pdf");
-}
+      const blob = new Blob([pdfContent], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "converted.pdf";
+      link.click();
 
-/* Split */
-async function splitPDF()
+      msg.style.color = "green";
+      msg.innerText = "✅ PDF file downloaded";
+    }
+  });
+</script>
+
+</body>
+</html>
