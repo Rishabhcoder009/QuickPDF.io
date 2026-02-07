@@ -1,138 +1,259 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Text Converter</title>
+<title>Quick PDF</title>
+
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
-  * {
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
-  }
+:root{--bg:#f4f6fb;--card:#fff;--text:#111}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#fff}
+body{margin:0;font-family:Arial;background:var(--bg);color:var(--text)}
+header{background:#e50914;color:#fff;padding:15px;text-align:center;position:relative}
+.logo{font-size:30px;font-weight:800}
+.darkBtn{position:absolute;right:20px;top:20px}
 
-  body {
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #f2f2f2;
-  }
+.tools{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:25px;padding:40px;max-width:1200px;margin:auto}
 
-  .container {
-    background: #fff;
-    width: 350px;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    text-align: center;
-  }
+.card{
+background:var(--card);
+padding:30px;border-radius:18px;
+text-align:center;cursor:pointer;
+box-shadow:0 8px 25px rgba(0,0,0,.08);
+transition:.3s}
 
-  h2 {
-    margin-bottom: 15px;
-  }
+.card:hover{transform:translateY(-8px)}
+.icon{font-size:42px;margin-bottom:10px}
 
-  textarea {
-    width: 100%;
-    height: 120px;
-    padding: 10px;
-    resize: none;
-    margin-bottom: 10px;
-  }
+#toolArea{
+max-width:900px;margin:30px auto;
+background:var(--card);padding:30px;
+border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.1)}
 
-  select, button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 14px;
-  }
+button{
+padding:10px 15px;border:none;
+background:#0078d7;color:#fff;
+border-radius:6px;cursor:pointer;margin:6px}
 
-  button {
-    background: black;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 6px;
-  }
+input,select{
+margin:6px;padding:6px;width:220px}
 
-  button:hover {
-    background: #333;
-  }
-
-  .msg {
-    margin-top: 15px;
-    font-size: 14px;
-    color: green;
-  }
+canvas{
+display:block;margin:15px auto;
+border-radius:10px;
+box-shadow:0 6px 20px rgba(0,0,0,.2)}
 </style>
 </head>
 
 <body>
 
-<div class="container">
-  <h2>Text Converter</h2>
+<header>
+<div class="logo">⚡ Quick PDF</div>
+<button class="darkBtn" onclick="document.body.classList.toggle('dark')">🌙</button>
+</header>
 
-  <textarea id="textInput" placeholder="Paste your text here..."></textarea>
-
-  <select id="convertType">
-    <option value="">Select Conversion</option>
-    <option value="textToPdf">Text → PDF</option>
-    <option value="textToWord">Text → Word</option>
-  </select>
-
-  <!-- MAIN BUTTON -->
-  <button id="convertBtn">Convert</button>
-
-  <div class="msg" id="message"></div>
+<!-- TOOL BOXES -->
+<div class="tools">
+<div class="card" onclick="showTool('merge')"><div class="icon">🧩</div>Merge PDF</div>
+<div class="card" onclick="showTool('split')"><div class="icon">✂️</div>Split PDF</div>
+<div class="card" onclick="showTool('watermark')"><div class="icon">💧</div>Watermark PDF</div>
+<div class="card" onclick="showTool('img2pdf')"><div class="icon">🖼️</div>Image → PDF</div>
+<div class="card" onclick="showTool('pdf2img')"><div class="icon">📸</div>PDF → Images</div>
 </div>
 
+<div id="toolArea"></div>
+
 <script>
-  document.getElementById("convertBtn").addEventListener("click", function () {
+const toolArea=document.getElementById("toolArea");
 
-    const text = document.getElementById("textInput").value.trim();
-    const type = document.getElementById("convertType").value;
-    const msg = document.getElementById("message");
+function showTool(t){
+const ui={
+merge:`
+<h2>Merge PDFs</h2>
+<input type=file id=files multiple accept="application/pdf"><br>
+<button onclick=mergePDFs()>Merge</button>`,
 
-    if (!text) {
-      msg.style.color = "red";
-      msg.innerText = "❌ Please enter some text";
-      return;
-    }
+split:`
+<h2>Split PDF</h2>
+<input type=file id=file accept="application/pdf"><br>
+<button onclick=splitPDF()>Split</button>`,
 
-    if (!type) {
-      msg.style.color = "red";
-      msg.innerText = "❌ Please select conversion type";
-      return;
-    }
+watermark:`
+<h2>Watermark PDF</h2>
+<input type=file id=file accept="application/pdf"><br>
 
-    if (type === "textToWord") {
-      const blob = new Blob([text], { type: "application/msword" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "converted.doc";
-      link.click();
+<input id=wmText placeholder="Watermark text"><br>
 
-      msg.style.color = "green";
-      msg.innerText = "✅ Word file downloaded";
+<select id=wmPos>
+<option value="top-left">Top Left</option>
+<option value="top-center">Top Center</option>
+<option value="top-right">Top Right</option>
+<option value="left">Center Left</option>
+<option value="center" selected>Center</option>
+<option value="right">Center Right</option>
+<option value="bottom-left">Bottom Left</option>
+<option value="bottom-center">Bottom Center</option>
+<option value="bottom-right">Bottom Right</option>
+</select><br>
 
-    } else if (type === "textToPdf") {
-      const pdfContent = `
-        <html>
-          <body>
-            <pre>${text}</pre>
-          </body>
-        </html>
-      `;
+<label>Font Size</label><br>
+<input type=range id=wmSize min=10 max=100 value=40><br>
 
-      const blob = new Blob([pdfContent], { type: "application/pdf" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "converted.pdf";
-      link.click();
+<label>Opacity</label><br>
+<input type=range id=wmOpacity min=0.1 max=1 step=0.1 value=0.4><br>
 
-      msg.style.color = "green";
-      msg.innerText = "✅ PDF file downloaded";
-    }
-  });
+<label>Angle</label><br>
+<input type=number id=wmAngle value=-45><br>
+
+<button onclick=previewWatermark()>🔍 Preview</button>
+<button onclick=applyWatermark()>⬇ Download PDF</button>
+
+<canvas id=preview width=500 height=650></canvas>`,
+
+img2pdf:`
+<h2>Images → PDF</h2>
+<input type=file id=imgs multiple accept="image/*"><br>
+<button onclick=imgToPDF()>Convert</button>`,
+
+pdf2img:`
+<h2>PDF → Images</h2>
+<input type=file id=file accept="application/pdf"><br>
+<div id=out></div>
+<button onclick=pdf2img()>Convert</button>`
+};
+toolArea.innerHTML=ui[t];
+}
+
+function download(bytes,name){
+const a=document.createElement("a");
+a.href=URL.createObjectURL(new Blob([bytes]));
+a.download=name;
+a.click();
+}
+
+/* MERGE */
+async function mergePDFs(){
+const files=document.getElementById("files").files;
+const merged=await PDFLib.PDFDocument.create();
+for(const f of files){
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+const pages=await merged.copyPages(pdf,pdf.getPageIndices());
+pages.forEach(p=>merged.addPage(p));
+}
+download(await merged.save(),"merged.pdf");
+}
+
+/* SPLIT */
+async function splitPDF(){
+const f=document.getElementById("file").files[0];
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+for(let i=0;i<pdf.getPageCount();i++){
+const n=await PDFLib.PDFDocument.create();
+const [p]=await n.copyPages(pdf,[i]);
+n.addPage(p);
+download(await n.save(),`page-${i+1}.pdf`);
+}
+}
+
+/* WATERMARK PREVIEW */
+async function previewWatermark(){
+const f=document.getElementById("file").files[0];
+if(!f) return alert("Upload PDF first");
+
+const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+const page=await pdf.getPage(1);
+const canvas=document.getElementById("preview");
+const ctx=canvas.getContext("2d");
+const v=page.getViewport({scale:0.8});
+canvas.width=v.width;canvas.height=v.height;
+await page.render({canvasContext:ctx,viewport:v}).promise;
+
+const text=document.getElementById("wmText").value||"Quick PDF";
+const size=document.getElementById("wmSize").value;
+const opacity=document.getElementById("wmOpacity").value;
+const angle=document.getElementById("wmAngle").value;
+const pos=document.getElementById("wmPos").value;
+
+let x=canvas.width/2,y=canvas.height/2,p=50;
+if(pos.includes("top")) y=p;
+if(pos.includes("bottom")) y=canvas.height-p;
+if(pos.includes("left")) x=p;
+if(pos.includes("right")) x=canvas.width-p;
+
+ctx.save();
+ctx.globalAlpha=opacity;
+ctx.translate(x,y);
+ctx.rotate(angle*Math.PI/180);
+ctx.font=size+"px Arial";
+ctx.fillStyle="gray";
+ctx.textAlign="center";
+ctx.fillText(text,0,0);
+ctx.restore();
+}
+
+/* APPLY WATERMARK */
+async function applyWatermark(){
+const f=document.getElementById("file").files[0];
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
+
+const text=document.getElementById("wmText").value||"Quick PDF";
+const size=+document.getElementById("wmSize").value;
+const opacity=+document.getElementById("wmOpacity").value;
+const angle=+document.getElementById("wmAngle").value;
+const pos=document.getElementById("wmPos").value;
+
+pdf.getPages().forEach(p=>{
+const {width,height}=p.getSize();
+let x=width/2,y=height/2,pad=50;
+if(pos.includes("top")) y=height-pad;
+if(pos.includes("bottom")) y=pad;
+if(pos.includes("left")) x=pad;
+if(pos.includes("right")) x=width-pad;
+
+p.drawText(text,{
+x,y,size,font,
+rotate:PDFLib.degrees(angle),
+opacity
+});
+});
+download(await pdf.save(),"watermarked.pdf");
+}
+
+/* IMAGE → PDF */
+async function imgToPDF(){
+const files=document.getElementById("imgs").files;
+const pdf=await PDFLib.PDFDocument.create();
+for(const f of files){
+const imgBytes=await f.arrayBuffer();
+const img=f.type.includes("png")
+?await pdf.embedPng(imgBytes)
+:await pdf.embedJpg(imgBytes);
+const page=pdf.addPage([img.width,img.height]);
+page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+}
+download(await pdf.save(),"images.pdf");
+}
+
+/* PDF → IMAGE */
+async function pdf2img(){
+const f=document.getElementById("file").files[0];
+const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+const out=document.getElementById("out");out.innerHTML="";
+for(let i=1;i<=pdf.numPages;i++){
+const p=await pdf.getPage(i);
+const v=p.getViewport({scale:1});
+const c=document.createElement("canvas");
+c.width=v.width;c.height=v.height;
+await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+out.appendChild(c);
+}
+}
 </script>
 
 </body>
