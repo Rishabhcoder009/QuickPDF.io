@@ -5,11 +5,11 @@
 <title>Quick PDF</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PDF libs -->
+<!-- PDF -->
 <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-<!-- Word libs -->
+<!-- Word -->
 <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.min.js"></script>
 
@@ -17,12 +17,12 @@
 :root{
   --bg:#f4f6fb;
   --card:#ffffff;
-  --text:#111111;
+  --text:#111;
 }
 .dark{
   --bg:#0f172a;
   --card:#1e293b;
-  --text:#ffffff;
+  --text:#fff;
 }
 body{
   margin:0;
@@ -34,21 +34,25 @@ header{
   background:#e50914;
   color:#fff;
   padding:15px;
-  text-align:center;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 .logo{
-  font-size:28px;
+  font-size:26px;
   font-weight:800;
 }
 .darkBtn{
-  background:#00000033;
-  color:#fff;
+  padding:8px 14px;
   border:none;
-  cursor:pointer;
   border-radius:10px;
-  font-size:16px;
-  padding:10px 14px;
+  cursor:pointer;
+  font-size:15px;
+  background:#00000040;
+  color:white;
+  width:auto;
 }
+
 .tools{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
@@ -67,7 +71,7 @@ header{
   transition:.3s;
 }
 .card:hover{transform:translateY(-5px)}
-.icon{font-size:40px;margin-bottom:10px}
+.icon{font-size:38px;margin-bottom:10px}
 
 #toolArea{
   max-width:900px;
@@ -77,7 +81,8 @@ header{
   border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
-button,input,select{
+
+button,input{
   width:100%;
   padding:12px;
   margin:6px 0;
@@ -90,7 +95,6 @@ button{
   color:white;
   cursor:pointer;
 }
-canvas{width:100%;max-width:500px;margin:auto;display:block}
 </style>
 </head>
 
@@ -99,14 +103,13 @@ canvas{width:100%;max-width:500px;margin:auto;display:block}
 <header>
   <div class="logo">⚡ Quick PDF</div>
   <button class="darkBtn" onclick="document.body.classList.toggle('dark')">
-    🌙 Toggle Theme
+    🌙 Theme
   </button>
 </header>
 
 <div class="tools">
   <div class="card" onclick="showTool('merge')"><div class="icon">🧩</div>Merge PDF</div>
   <div class="card" onclick="showTool('split')"><div class="icon">✂️</div>Split PDF</div>
-  <div class="card" onclick="showTool('watermark')"><div class="icon">💧</div>Watermark PDF</div>
   <div class="card" onclick="showTool('img2pdf')"><div class="icon">🖼️</div>Image → PDF</div>
   <div class="card" onclick="showTool('pdf2img')"><div class="icon">📸</div>PDF → Images</div>
   <div class="card" onclick="showTool('word2pdf')"><div class="icon">📄</div>Word → PDF</div>
@@ -120,19 +123,24 @@ const toolArea=document.getElementById("toolArea");
 
 function showTool(t){
 const ui={
-merge:`<h2>Merge PDFs</h2><input type=file id=files multiple accept="application/pdf"><button onclick=mergePDFs()>Merge</button>`,
+merge:`<h2>Merge PDFs</h2>
+<input type=file id=files multiple accept="application/pdf">
+<button onclick=mergePDFs()>Merge</button>`,
 
-split:`<h2>Split PDF</h2><input type=file id=file accept="application/pdf"><button onclick=splitPDF()>Split</button>`,
+split:`<h2>Split PDF</h2>
+<input type=file id=file accept="application/pdf">
+<button onclick=splitPDF()>Split</button>`,
 
-watermark:`<h2>Watermark PDF</h2><input type=file id=file accept="application/pdf">
-<input id=wmText placeholder="Watermark text">
-<button onclick=applyWatermark()>Download</button>`,
+img2pdf:`<h2>Images → PDF</h2>
+<input type=file id=imgs multiple accept="image/*">
+<button onclick=imgToPDF()>Convert</button>`,
 
-img2pdf:`<h2>Images → PDF</h2><input type=file id=imgs multiple accept="image/*"><button onclick=imgToPDF()>Convert</button>`,
+pdf2img:`<h2>PDF → Images</h2>
+<input type=file id=file accept="application/pdf">
+<div id=out></div>
+<button onclick=pdf2img()>Convert</button>`,
 
-pdf2img:`<h2>PDF → Images</h2><input type=file id=file accept="application/pdf"><div id=out></div><button onclick=pdf2img()>Convert</button>`,
-
-word2pdf:`<h2>Word → PDF (Basic)</h2>
+word2pdf:`<h2>Word → PDF (Text only)</h2>
 <input type=file id=wordFile accept=".docx">
 <button onclick=wordToPDF()>Convert</button>`,
 
@@ -143,9 +151,7 @@ pdf2word:`<h2>PDF → Word (Text only)</h2>
 toolArea.innerHTML=ui[t];
 }
 
-/* Download helper */
-function download(bytes,name,type="application/pdf"){
-  const blob=new Blob([bytes],{type});
+function download(blob,name){
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=name;
@@ -156,29 +162,46 @@ function download(bytes,name,type="application/pdf"){
 async function wordToPDF(){
   const file=document.getElementById("wordFile").files[0];
   if(!file) return alert("Upload a Word file");
+
   const result=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
   const pdf=await PDFLib.PDFDocument.create();
-  const page=pdf.addPage();
-  page.drawText(result.value,{x:50,y:750,size:12});
-  download(await pdf.save(),"word-to-pdf.pdf");
+  const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
+
+  let page=pdf.addPage();
+  let y=750;
+
+  result.value.split("\n").forEach(line=>{
+    if(y<50){
+      page=pdf.addPage();
+      y=750;
+    }
+    page.drawText(line,{x:50,y,size:12,font});
+    y-=16;
+  });
+
+  download(new Blob([await pdf.save()],{type:"application/pdf"}),"word-to-pdf.pdf");
 }
 
 /* PDF → Word */
 async function pdfToWord(){
   const file=document.getElementById("pdfFile").files[0];
   if(!file) return alert("Upload a PDF");
+
   const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
   let text="";
+
   for(let i=1;i<=pdf.numPages;i++){
     const page=await pdf.getPage(i);
-    const c=await page.getTextContent();
-    text+=c.items.map(i=>i.str).join(" ")+"\n\n";
+    const content=await page.getTextContent();
+    text+=content.items.map(i=>i.str).join(" ")+"\n\n";
   }
+
   const doc=new docx.Document({
-    sections:[{children:[new docx.Paragraph(text)]}]
+    sections:[{children:text.split("\n").map(t=>new docx.Paragraph(t))}]
   });
+
   const blob=await docx.Packer.toBlob(doc);
-  download(blob,"pdf-to-word.docx","application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  download(blob,"pdf-to-word.docx");
 }
 </script>
 
