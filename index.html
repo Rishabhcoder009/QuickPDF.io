@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Quick PDF</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
@@ -31,18 +30,43 @@ header{
   color:#fff;
   padding:15px;
   text-align:center;
-  position:relative;
 }
 .logo{
   font-size:28px;
   font-weight:800;
 }
+
+/* THEME BUTTON */
 .darkBtn{
-  position:absolute;
-  right:15px;
-  top:15px;
   background:#00000033;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+  border-radius:10px;
+  font-size:16px;
 }
+
+/* Desktop */
+@media(min-width:769px){
+  header{position:relative}
+  .darkBtn{
+    position:absolute;
+    right:15px;
+    top:15px;
+    padding:8px 14px;
+    width:auto;
+  }
+}
+
+/* Mobile / Tablet */
+@media(max-width:768px){
+  .darkBtn{
+    width:100%;
+    margin-top:10px;
+    padding:12px;
+  }
+}
+
 .tools{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
@@ -100,7 +124,9 @@ canvas{
 
 <header>
   <div class="logo">⚡ Quick PDF</div>
-  <button class="darkBtn" onclick="document.body.classList.toggle('dark')">🌙</button>
+  <button class="darkBtn" onclick="document.body.classList.toggle('dark')">
+    🌙 Toggle Theme
+  </button>
 </header>
 
 <div class="tools">
@@ -116,7 +142,7 @@ canvas{
 <script>
 const toolArea=document.getElementById("toolArea");
 
-/* ---------- UI ---------- */
+/* UI */
 function showTool(t){
 const ui={
 merge:`
@@ -133,6 +159,7 @@ watermark:`
 <h2>Watermark PDF</h2>
 <input type=file id=file accept="application/pdf">
 <input id=wmText placeholder="Watermark text">
+
 <select id=wmPos>
 <option value="top-left">Top Left</option>
 <option value="top-center">Top Center</option>
@@ -173,14 +200,14 @@ pdf2img:`
 toolArea.innerHTML=ui[t];
 }
 
-/* ---------- MOBILE SAFE DOWNLOAD ---------- */
+/* Mobile-safe download */
 function download(bytes,name){
   const blob=new Blob([bytes],{type:"application/pdf"});
   const url=URL.createObjectURL(blob);
   window.open(url,"_blank");
 }
 
-/* ---------- MERGE ---------- */
+/* Merge */
 async function mergePDFs(){
 const files=document.getElementById("files").files;
 const merged=await PDFLib.PDFDocument.create();
@@ -192,7 +219,7 @@ pages.forEach(p=>merged.addPage(p));
 download(await merged.save(),"merged.pdf");
 }
 
-/* ---------- SPLIT ---------- */
+/* Split */
 async function splitPDF(){
 const f=document.getElementById("file").files[0];
 const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
@@ -204,38 +231,7 @@ download(await n.save(),`page-${i+1}.pdf`);
 }
 }
 
-/* ---------- WATERMARK PREVIEW ---------- */
-async function previewWatermark(){
-const f=document.getElementById("file").files[0];
-if(!f) return alert("Upload PDF first");
-
-const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
-const page=await pdf.getPage(1);
-
-const canvas=document.getElementById("preview");
-const ctx=canvas.getContext("2d");
-
-const scale=window.innerWidth<600?0.5:0.8;
-const v=page.getViewport({scale});
-canvas.width=v.width;canvas.height=v.height;
-await page.render({canvasContext:ctx,viewport:v}).promise;
-
-drawWatermarkCanvas(ctx,canvas);
-}
-
-/* ---------- APPLY WATERMARK ---------- */
-async function applyWatermark(){
-const f=document.getElementById("file").files[0];
-const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
-const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
-
-pdf.getPages().forEach(page=>{
-drawWatermarkPDF(page,font);
-});
-download(await pdf.save(),"watermarked.pdf");
-}
-
-/* ---------- POSITION LOGIC ---------- */
+/* Watermark helpers */
 function getPosition(w,h,pos,pad=50){
 let x=w/2,y=h/2;
 if(pos.includes("top")) y=h-pad;
@@ -245,8 +241,21 @@ if(pos.includes("right")) x=w-pad;
 return {x,y};
 }
 
-/* ---------- CANVAS WATERMARK ---------- */
-function drawWatermarkCanvas(ctx,canvas){
+/* Preview */
+async function previewWatermark(){
+const f=document.getElementById("file").files[0];
+if(!f) return alert("Upload PDF first");
+
+const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+const page=await pdf.getPage(1);
+const canvas=document.getElementById("preview");
+const ctx=canvas.getContext("2d");
+
+const scale=window.innerWidth<600?0.5:0.8;
+const v=page.getViewport({scale});
+canvas.width=v.width;canvas.height=v.height;
+await page.render({canvasContext:ctx,viewport:v}).promise;
+
 const text=document.getElementById("wmText").value||"Quick PDF";
 const size=+document.getElementById("wmSize").value;
 const opacity=+document.getElementById("wmOpacity").value;
@@ -254,7 +263,6 @@ const angle=+document.getElementById("wmAngle").value;
 const pos=document.getElementById("wmPos").value;
 
 const {x,y}=getPosition(canvas.width,canvas.height,pos);
-
 ctx.save();
 ctx.globalAlpha=opacity;
 ctx.translate(x,y);
@@ -266,25 +274,31 @@ ctx.fillText(text,0,0);
 ctx.restore();
 }
 
-/* ---------- PDF WATERMARK ---------- */
-function drawWatermarkPDF(page,font){
-const text=document.getElementById("wmText").value||"Quick PDF";
-const size=+document.getElementById("wmSize").value;
-const opacity=+document.getElementById("wmOpacity").value;
-const angle=+document.getElementById("wmAngle").value;
-const pos=document.getElementById("wmPos").value;
+/* Apply watermark */
+async function applyWatermark(){
+const f=document.getElementById("file").files[0];
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
 
+pdf.getPages().forEach(page=>{
 const {width,height}=page.getSize();
+const pos=document.getElementById("wmPos").value;
 const {x,y}=getPosition(width,height,pos);
 
-page.drawText(text,{
-x,y,size,font,
-rotate:PDFLib.degrees(angle),
-opacity
+page.drawText(
+document.getElementById("wmText").value||"Quick PDF",
+{
+x,y,
+size:+document.getElementById("wmSize").value,
+font,
+rotate:PDFLib.degrees(+document.getElementById("wmAngle").value),
+opacity:+document.getElementById("wmOpacity").value
 });
+});
+download(await pdf.save(),"watermarked.pdf");
 }
 
-/* ---------- IMAGE → PDF ---------- */
+/* Image → PDF */
 async function imgToPDF(){
 const files=document.getElementById("imgs").files;
 const pdf=await PDFLib.PDFDocument.create();
@@ -299,7 +313,7 @@ page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
 download(await pdf.save(),"images.pdf");
 }
 
-/* ---------- PDF → IMAGE ---------- */
+/* PDF → Image */
 async function pdf2img(){
 const f=document.getElementById("file").files[0];
 const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
