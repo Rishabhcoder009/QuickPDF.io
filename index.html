@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Quick PDF</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -10,105 +11,112 @@
 <style>
 :root{
   --bg:#f4f6fb;
-  --card:#fff;
-  --text:#111;
-  --footer:#e5e7eb;
+  --card:#ffffff;
+  --text:#111111;
 }
 .dark{
   --bg:#0f172a;
   --card:#1e293b;
-  --text:#fff;
-  --footer:#020617;
+  --text:#ffffff;
 }
-
-*{box-sizing:border-box}
-
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial,Helvetica,sans-serif;
   background:var(--bg);
   color:var(--text);
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
 }
-
 header{
   background:#e50914;
   color:#fff;
   padding:15px;
   text-align:center;
-  position:relative;
 }
-
 .logo{
-  font-size:30px;
+  font-size:28px;
   font-weight:800;
 }
 
+/* THEME BUTTON */
 .darkBtn{
-  position:absolute;
-  right:20px;
-  top:20px;
+  background:#00000033;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+  border-radius:10px;
+  font-size:16px;
+}
+
+/* Desktop */
+@media(min-width:769px){
+  header{position:relative}
+  .darkBtn{
+    position:absolute;
+    right:15px;
+    top:15px;
+    padding:8px 14px;
+    width:auto;
+  }
+}
+
+/* Mobile / Tablet */
+@media(max-width:768px){
+  .darkBtn{
+    width:100%;
+    margin-top:10px;
+    padding:12px;
+  }
 }
 
 .tools{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:25px;
-  padding:40px;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:15px;
+  padding:20px;
   max-width:1200px;
   margin:auto;
 }
-
 .card{
   background:var(--card);
-  padding:30px;
-  border-radius:18px;
+  padding:25px;
+  border-radius:16px;
   text-align:center;
   cursor:pointer;
-  box-shadow:0 8px 25px rgba(0,0,0,.08);
+  box-shadow:0 6px 20px rgba(0,0,0,.1);
   transition:.3s;
 }
-.card:hover{transform:translateY(-8px)}
-
-.icon{
-  font-size:42px;
-  margin-bottom:10px;
-}
+.card:hover{transform:translateY(-5px)}
+.icon{font-size:40px;margin-bottom:10px}
 
 #toolArea{
   max-width:900px;
-  margin:30px auto;
+  margin:20px auto;
   background:var(--card);
-  padding:30px;
-  border-radius:15px;
-  box-shadow:0 10px 30px rgba(0,0,0,.1);
+  padding:20px;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
 
-button{
-  padding:10px 15px;
-  border:none;
-  background:#0078d7;
-  color:#fff;
+button,input,select{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  font-size:16px;
   border-radius:6px;
+  border:none;
+}
+button{
+  background:#0078d7;
+  color:white;
   cursor:pointer;
-  margin:6px;
 }
-
-input,select{
-  margin:6px;
-  padding:6px;
-  width:220px;
-}
-
 canvas{
+  width:100%;
+  max-width:500px;
   display:block;
   margin:15px auto;
   border-radius:10px;
   box-shadow:0 6px 20px rgba(0,0,0,.2);
 }
-
 </style>
 </head>
 
@@ -116,7 +124,9 @@ canvas{
 
 <header>
   <div class="logo">⚡ Quick PDF</div>
-  <button class="darkBtn" onclick="document.body.classList.toggle('dark')">🌙</button>
+  <button class="darkBtn" onclick="document.body.classList.toggle('dark')">
+    🌙 Toggle Theme
+  </button>
 </header>
 
 <div class="tools">
@@ -132,15 +142,24 @@ canvas{
 <script>
 const toolArea=document.getElementById("toolArea");
 
+/* UI */
 function showTool(t){
 const ui={
-merge:`<h2>Merge PDFs</h2><input type=file id=files multiple accept="application/pdf"><br><button onclick=mergePDFs()>Merge</button>`,
+merge:`
+<h2>Merge PDFs</h2>
+<input type=file id=files multiple accept="application/pdf">
+<button onclick=mergePDFs()>Merge</button>`,
 
-split:`<h2>Split PDF</h2><input type=file id=file accept="application/pdf"><br><button onclick=splitPDF()>Split</button>`,
+split:`
+<h2>Split PDF</h2>
+<input type=file id=file accept="application/pdf">
+<button onclick=splitPDF()>Split</button>`,
 
-watermark:`<h2>Watermark PDF</h2>
-<input type=file id=file accept="application/pdf"><br>
-<input id=wmText placeholder="Watermark text"><br>
+watermark:`
+<h2>Watermark PDF</h2>
+<input type=file id=file accept="application/pdf">
+<input id=wmText placeholder="Watermark text">
+
 <select id=wmPos>
 <option value="top-left">Top Left</option>
 <option value="top-center">Top Center</option>
@@ -151,25 +170,164 @@ watermark:`<h2>Watermark PDF</h2>
 <option value="bottom-left">Bottom Left</option>
 <option value="bottom-center">Bottom Center</option>
 <option value="bottom-right">Bottom Right</option>
-</select><br>
-<label>Font Size</label><br>
-<input type=range id=wmSize min=10 max=100 value=40><br>
-<label>Opacity</label><br>
-<input type=range id=wmOpacity min=0.1 max=1 step=0.1 value=0.4><br>
-<label>Angle</label><br>
-<input type=number id=wmAngle value=-45><br>
-<button onclick=previewWatermark()>Preview</button>
-<button onclick=applyWatermark()>Download PDF</button>
+</select>
+
+<label>Font Size</label>
+<input type=range id=wmSize min=12 max=100 value=40>
+
+<label>Opacity</label>
+<input type=range id=wmOpacity min=0.1 max=1 step=0.1 value=0.4>
+
+<label>Angle</label>
+<input type=number id=wmAngle value=-45>
+
+<button onclick=previewWatermark()>🔍 Preview</button>
+<button onclick=applyWatermark()>⬇ Download PDF</button>
+
 <canvas id=preview></canvas>`,
 
-img2pdf:`<h2>Images → PDF</h2><input type=file id=imgs multiple accept="image/*"><br><button onclick=imgToPDF()>Convert</button>`,
+img2pdf:`
+<h2>Images → PDF</h2>
+<input type=file id=imgs multiple accept="image/*">
+<button onclick=imgToPDF()>Convert</button>`,
 
-pdf2img:`<h2>PDF → Images</h2><input type=file id=file accept="application/pdf"><br><div id=out></div><button onclick=pdf2img()>Convert</button>`
+pdf2img:`
+<h2>PDF → Images</h2>
+<input type=file id=file accept="application/pdf">
+<div id=out></div>
+<button onclick=pdf2img()>Convert</button>`
 };
 toolArea.innerHTML=ui[t];
 }
 
-/* rest of your JS stays SAME (no logic touched) */
+/* Mobile-safe download */
+function download(bytes,name){
+  const blob=new Blob([bytes],{type:"application/pdf"});
+  const url=URL.createObjectURL(blob);
+  window.open(url,"_blank");
+}
+
+/* Merge */
+async function mergePDFs(){
+const files=document.getElementById("files").files;
+const merged=await PDFLib.PDFDocument.create();
+for(const f of files){
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+const pages=await merged.copyPages(pdf,pdf.getPageIndices());
+pages.forEach(p=>merged.addPage(p));
+}
+download(await merged.save(),"merged.pdf");
+}
+
+/* Split */
+async function splitPDF(){
+const f=document.getElementById("file").files[0];
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+for(let i=0;i<pdf.getPageCount();i++){
+const n=await PDFLib.PDFDocument.create();
+const [p]=await n.copyPages(pdf,[i]);
+n.addPage(p);
+download(await n.save(),`page-${i+1}.pdf`);
+}
+}
+
+/* Watermark helpers */
+function getPosition(w,h,pos,pad=50){
+let x=w/2,y=h/2;
+if(pos.includes("top")) y=h-pad;
+if(pos.includes("bottom")) y=pad;
+if(pos.includes("left")) x=pad;
+if(pos.includes("right")) x=w-pad;
+return {x,y};
+}
+
+/* Preview */
+async function previewWatermark(){
+const f=document.getElementById("file").files[0];
+if(!f) return alert("Upload PDF first");
+
+const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+const page=await pdf.getPage(1);
+const canvas=document.getElementById("preview");
+const ctx=canvas.getContext("2d");
+
+const scale=window.innerWidth<600?0.5:0.8;
+const v=page.getViewport({scale});
+canvas.width=v.width;canvas.height=v.height;
+await page.render({canvasContext:ctx,viewport:v}).promise;
+
+const text=document.getElementById("wmText").value||"Quick PDF";
+const size=+document.getElementById("wmSize").value;
+const opacity=+document.getElementById("wmOpacity").value;
+const angle=+document.getElementById("wmAngle").value;
+const pos=document.getElementById("wmPos").value;
+
+const {x,y}=getPosition(canvas.width,canvas.height,pos);
+ctx.save();
+ctx.globalAlpha=opacity;
+ctx.translate(x,y);
+ctx.rotate(angle*Math.PI/180);
+ctx.font=size+"px Arial";
+ctx.fillStyle="gray";
+ctx.textAlign="center";
+ctx.fillText(text,0,0);
+ctx.restore();
+}
+
+/* Apply watermark */
+async function applyWatermark(){
+const f=document.getElementById("file").files[0];
+const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
+const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
+
+pdf.getPages().forEach(page=>{
+const {width,height}=page.getSize();
+const pos=document.getElementById("wmPos").value;
+const {x,y}=getPosition(width,height,pos);
+
+page.drawText(
+document.getElementById("wmText").value||"Quick PDF",
+{
+x,y,
+size:+document.getElementById("wmSize").value,
+font,
+rotate:PDFLib.degrees(+document.getElementById("wmAngle").value),
+opacity:+document.getElementById("wmOpacity").value
+});
+});
+download(await pdf.save(),"watermarked.pdf");
+}
+
+/* Image → PDF */
+async function imgToPDF(){
+const files=document.getElementById("imgs").files;
+const pdf=await PDFLib.PDFDocument.create();
+for(const f of files){
+const imgBytes=await f.arrayBuffer();
+const img=f.type.includes("png")
+?await pdf.embedPng(imgBytes)
+:await pdf.embedJpg(imgBytes);
+const page=pdf.addPage([img.width,img.height]);
+page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+}
+download(await pdf.save(),"images.pdf");
+}
+
+/* PDF → Image */
+async function pdf2img(){
+const f=document.getElementById("file").files[0];
+const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+const out=document.getElementById("out");
+out.innerHTML="";
+for(let i=1;i<=pdf.numPages;i++){
+const p=await pdf.getPage(i);
+const v=p.getViewport({scale:1});
+const c=document.createElement("canvas");
+c.width=v.width;c.height=v.height;
+await p.render({canvasContext:c.getContext("2d"),viewport:v}).promise;
+out.appendChild(c);
+}
+}
 </script>
 
 </body>
