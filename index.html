@@ -35,8 +35,6 @@ header{
   font-size:28px;
   font-weight:800;
 }
-
-/* THEME BUTTON */
 .darkBtn{
   background:#00000033;
   color:#fff;
@@ -45,8 +43,6 @@ header{
   border-radius:10px;
   font-size:16px;
 }
-
-/* Desktop */
 @media(min-width:769px){
   header{position:relative}
   .darkBtn{
@@ -54,11 +50,8 @@ header{
     right:15px;
     top:15px;
     padding:8px 14px;
-    width:auto;
   }
 }
-
-/* Mobile / Tablet */
 @media(max-width:768px){
   .darkBtn{
     width:100%;
@@ -66,7 +59,6 @@ header{
     padding:12px;
   }
 }
-
 .tools{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
@@ -86,7 +78,6 @@ header{
 }
 .card:hover{transform:translateY(-5px)}
 .icon{font-size:40px;margin-bottom:10px}
-
 #toolArea{
   max-width:900px;
   margin:20px auto;
@@ -95,8 +86,7 @@ header{
   border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
-
-button,input,select{
+button,input{
   width:100%;
   padding:12px;
   margin:6px 0;
@@ -115,7 +105,6 @@ canvas{
   display:block;
   margin:15px auto;
   border-radius:10px;
-  box-shadow:0 6px 20px rgba(0,0,0,.2);
 }
 </style>
 </head>
@@ -130,11 +119,21 @@ canvas{
 </header>
 
 <div class="tools">
-  <div class="card" onclick="showTool('merge')"><div class="icon">🧩</div>Merge PDF</div>
-  <div class="card" onclick="showTool('split')"><div class="icon">✂️</div>Split PDF</div>
-  <div class="card" onclick="showTool('watermark')"><div class="icon">💧</div>Watermark PDF</div>
-  <div class="card" onclick="showTool('img2pdf')"><div class="icon">🖼️</div>Image → PDF</div>
-  <div class="card" onclick="showTool('pdf2img')"><div class="icon">📸</div>PDF → Images</div>
+  <div class="card" onclick="showTool('merge')">
+    <div class="icon">🧩</div>Merge PDF
+  </div>
+
+  <div class="card" onclick="showTool('split')">
+    <div class="icon">✂️</div>Split PDF
+  </div>
+
+  <div class="card" onclick="showTool('img2pdf')">
+    <div class="icon">🖼️</div>Image → PDF
+  </div>
+
+  <div class="card" onclick="showTool('pdf2img')">
+    <div class="icon">📸</div>PDF → Images
+  </div>
 </div>
 
 <div id="toolArea"></div>
@@ -148,48 +147,18 @@ const ui={
 merge:`
 <h2>Merge PDFs</h2>
 <input type=file id=files multiple accept="application/pdf">
-<button onclick=mergePDFs()>Merge</button>`,
+<button onclick=mergePDFs()>Merge & Download</button>`,
 
 split:`
 <h2>Split PDF</h2>
 <input type=file id=file accept="application/pdf">
-<button onclick=splitPDF()>Split</button>`,
-
-watermark:`
-<h2>Watermark PDF</h2>
-<input type=file id=file accept="application/pdf">
-<input id=wmText placeholder="Watermark text">
-
-<select id=wmPos>
-<option value="top-left">Top Left</option>
-<option value="top-center">Top Center</option>
-<option value="top-right">Top Right</option>
-<option value="left">Center Left</option>
-<option value="center" selected>Center</option>
-<option value="right">Center Right</option>
-<option value="bottom-left">Bottom Left</option>
-<option value="bottom-center">Bottom Center</option>
-<option value="bottom-right">Bottom Right</option>
-</select>
-
-<label>Font Size</label>
-<input type=range id=wmSize min=12 max=100 value=40>
-
-<label>Opacity</label>
-<input type=range id=wmOpacity min=0.1 max=1 step=0.1 value=0.4>
-
-<label>Angle</label>
-<input type=number id=wmAngle value=-45>
-
-<button onclick=previewWatermark()>🔍 Preview</button>
-<button onclick=applyWatermark()>⬇ Download PDF</button>
-
-<canvas id=preview></canvas>`,
+<input type=text id=range placeholder="Enter pages (example: 1-3,5,8-10)">
+<button onclick=splitPDF()>Split & Download</button>`,
 
 img2pdf:`
 <h2>Images → PDF</h2>
 <input type=file id=imgs multiple accept="image/*">
-<button onclick=imgToPDF()>Convert</button>`,
+<button onclick=imgToPDF()>Convert & Download</button>`,
 
 pdf2img:`
 <h2>PDF → Images</h2>
@@ -200,16 +169,19 @@ pdf2img:`
 toolArea.innerHTML=ui[t];
 }
 
-/* Mobile-safe download */
+/* Download */
 function download(bytes,name){
-  const blob=new Blob([bytes],{type:"application/pdf"});
-  const url=URL.createObjectURL(blob);
-  window.open(url,"_blank");
+const blob=new Blob([bytes],{type:"application/pdf"});
+const link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download=name;
+link.click();
 }
 
 /* Merge */
 async function mergePDFs(){
 const files=document.getElementById("files").files;
+if(!files.length) return alert("Upload PDFs first");
 const merged=await PDFLib.PDFDocument.create();
 for(const f of files){
 const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
@@ -219,88 +191,38 @@ pages.forEach(p=>merged.addPage(p));
 download(await merged.save(),"merged.pdf");
 }
 
-/* Split */
+/* Split with Range */
 async function splitPDF(){
-const f=document.getElementById("file").files[0];
-const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
-for(let i=0;i<pdf.getPageCount();i++){
-const n=await PDFLib.PDFDocument.create();
-const [p]=await n.copyPages(pdf,[i]);
-n.addPage(p);
-download(await n.save(),`page-${i+1}.pdf`);
-}
-}
-
-/* Watermark helpers */
-function getPosition(w,h,pos,pad=50){
-let x=w/2,y=h/2;
-if(pos.includes("top")) y=h-pad;
-if(pos.includes("bottom")) y=pad;
-if(pos.includes("left")) x=pad;
-if(pos.includes("right")) x=w-pad;
-return {x,y};
-}
-
-/* Preview */
-async function previewWatermark(){
 const f=document.getElementById("file").files[0];
 if(!f) return alert("Upload PDF first");
 
-const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
-const page=await pdf.getPage(1);
-const canvas=document.getElementById("preview");
-const ctx=canvas.getContext("2d");
+const range=document.getElementById("range").value.trim();
+if(!range) return alert("Enter page range");
 
-const scale=window.innerWidth<600?0.5:0.8;
-const v=page.getViewport({scale});
-canvas.width=v.width;canvas.height=v.height;
-await page.render({canvasContext:ctx,viewport:v}).promise;
-
-const text=document.getElementById("wmText").value||"Quick PDF";
-const size=+document.getElementById("wmSize").value;
-const opacity=+document.getElementById("wmOpacity").value;
-const angle=+document.getElementById("wmAngle").value;
-const pos=document.getElementById("wmPos").value;
-
-const {x,y}=getPosition(canvas.width,canvas.height,pos);
-ctx.save();
-ctx.globalAlpha=opacity;
-ctx.translate(x,y);
-ctx.rotate(angle*Math.PI/180);
-ctx.font=size+"px Arial";
-ctx.fillStyle="gray";
-ctx.textAlign="center";
-ctx.fillText(text,0,0);
-ctx.restore();
-}
-
-/* Apply watermark */
-async function applyWatermark(){
-const f=document.getElementById("file").files[0];
 const pdf=await PDFLib.PDFDocument.load(await f.arrayBuffer());
-const font=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
+const newPdf=await PDFLib.PDFDocument.create();
 
-pdf.getPages().forEach(page=>{
-const {width,height}=page.getSize();
-const pos=document.getElementById("wmPos").value;
-const {x,y}=getPosition(width,height,pos);
+let pages=[];
+range.split(",").forEach(part=>{
+if(part.includes("-")){
+let [start,end]=part.split("-").map(Number);
+for(let i=start;i<=end;i++) pages.push(i-1);
+}else{
+pages.push(Number(part)-1);
+}
+});
 
-page.drawText(
-document.getElementById("wmText").value||"Quick PDF",
-{
-x,y,
-size:+document.getElementById("wmSize").value,
-font,
-rotate:PDFLib.degrees(+document.getElementById("wmAngle").value),
-opacity:+document.getElementById("wmOpacity").value
-});
-});
-download(await pdf.save(),"watermarked.pdf");
+const copied=await newPdf.copyPages(pdf,pages);
+copied.forEach(p=>newPdf.addPage(p));
+
+download(await newPdf.save(),"split.pdf");
 }
 
 /* Image → PDF */
 async function imgToPDF(){
 const files=document.getElementById("imgs").files;
+if(!files.length) return alert("Upload images first");
+
 const pdf=await PDFLib.PDFDocument.create();
 for(const f of files){
 const imgBytes=await f.arrayBuffer();
@@ -313,9 +235,11 @@ page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
 download(await pdf.save(),"images.pdf");
 }
 
-/* PDF → Image */
+/* PDF → Images (Preview Only) */
 async function pdf2img(){
 const f=document.getElementById("file").files[0];
+if(!f) return alert("Upload PDF first");
+
 const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
 const out=document.getElementById("out");
 out.innerHTML="";
